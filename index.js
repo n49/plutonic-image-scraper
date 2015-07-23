@@ -27,24 +27,24 @@ function Scraper(options) {
 util.inherits(Scraper, events);
 
 Scraper.prototype.scrape = function () {
-    var ref = this;
-    
-    var result = null;
+    var result = {
+        status: "ERROR"
+    };
     var url = this.options.url;
+    
+    var ref = this;
     
     if (url !== undefined && url !== null) {
         request(url, function (error, response, body) {
             if (!error && response.statusCode == 200) {
-                result = [];
-                
                 var $ = cheerio.load(body);
                 
+                var images = [];
+                var filePathRegex = new RegExp("^(\\/[a-zA-Z0-9\\-_]+\\.(jpg|gif|png))+$/i");
                 // var globalPromise = [];
                 
-                var filePathRegex = new RegExp("^(\\/[a-zA-Z0-9\\-_]+\\.(jpg|gif|png))+$/i");
-                
                 $("img").each(function () {
-                    result.push($(this).attr("src"));
+                    images.push($(this).attr("src"));
                 });
                 
                 $("a").has("img").each(function () {
@@ -52,7 +52,7 @@ Scraper.prototype.scrape = function () {
                     if (link !== undefined) {
                         var linkParsed = urlMod.parse(link);
                         if (filePathRegex.test(linkParsed.pathname)) {
-                            result.push(link);
+                            images.push(link);
                         }
                     }
                     
@@ -68,24 +68,35 @@ Scraper.prototype.scrape = function () {
                 .then(function (results) {
                    console.log("1234124123");
                 });*/
-            }
-            
-            if (ref.options.save === true) {
-                ref.save(result);
+                
+                if (ref.options.save === true) {
+                    ref.save(images);
+                } else {
+                    result.status = "SUCCESS";
+                    result.data = images;
+                    ref.emit("endscrape", result);
+                }
             } else {
-                ref.emit("end", result);
+                result.error = error.toString();
+                ref.emit("endscrape", result);
             }
         });
+    } else {
+        result.error = "URL not defined";
+        ref.emit("endscrape", result);
     }
 };
 
 Scraper.prototype.save = function (images) {
+    var result = {
+        status: "ERROR"
+    };
     if (this.options.path === undefined || this.options.path === null) {
         this.options.path = pathMod.dirname(require.main.filename) + "/";
     }
     var ref = this;
     
-    if (images !== undefined) {
+    if (images !== undefined && Array.isArray(images)) {
         var globalPromises = [];
         
         for(var i = 0; i < images.length; i++) {
@@ -98,16 +109,22 @@ Scraper.prototype.save = function (images) {
                     imageFile.on("error", function (e) {
                         console.error(e);
                     });
-                    imageFile.write(body);
-                    localPromise.resolve();
+                    imageFile.write(body, function () {
+                        localPromise.resolve();
+                    });
                 }
             });
         }
         
         Q.all(globalPromises)
         .then(function (results) {
-            ref.emit("end", images);
+            result.status = "SUCCESS";
+            result.data = images;
+            ref.emit("endsave", result);
         });
+    } else {
+        result.error = "Images array missing";
+        ref.emit("endsave", result);
     }
 };
 
