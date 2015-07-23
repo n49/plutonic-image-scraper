@@ -41,7 +41,6 @@ Scraper.prototype.scrape = function () {
                 
                 var images = [];
                 var filePathRegex = new RegExp("^(\\/[a-zA-Z0-9\\-_]+\\.(jpg|gif|png))+$/i");
-                // var globalPromise = [];
                 
                 $("img").each(function () {
                     images.push($(this).attr("src"));
@@ -55,19 +54,7 @@ Scraper.prototype.scrape = function () {
                             images.push(link);
                         }
                     }
-                    
-                    /*var localPromise = Q.defer();
-                    globalPromise.push(localPromise);
-                    var link = $(this).attr("href");
-                    request(link, function() {
-                        localPromise.resolve();
-                    });*/
                 });
-                
-                /*Q.all(globalPromise)
-                .then(function (results) {
-                   console.log("1234124123");
-                });*/
                 
                 if (ref.options.save === true) {
                     ref.save(images);
