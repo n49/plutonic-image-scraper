@@ -2,7 +2,6 @@
 "use strict";
 
 var mkdirp = require("mkdirp");
-var pathMod = require("path");
 
 var scraperUtils = {
     ensureDirectoryExists: function (path, callback) {
