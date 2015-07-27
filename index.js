@@ -9,6 +9,7 @@ var urlMod = require("url");
 var Q = require("q");
 var fs = require("fs");
 var pathMod = require("path");
+var scraperUtils = require("./inc/scraperUtils");
 
 function Scraper(options) {
     this.options = {
@@ -79,40 +80,49 @@ Scraper.prototype.save = function (images) {
         status: "ERROR"
     };
     if (this.options.path === undefined || this.options.path === null) {
-        this.options.path = pathMod.dirname(require.main.filename) + "/";
+        // this.options.path = pathMod.dirname(require.main.filename) + "/";
+        this.options.path = pathMod.dirname(require.main.filename) + "/images/plutonic-image-scraper/";
     }
     var ref = this;
     
-    if (images !== undefined && Array.isArray(images)) {
-        var globalPromises = [];
-        
-        for(var i = 0; i < images.length; i++) {
-            var localPromise = Q.defer();
-            globalPromises.push(localPromise);
-            request(images[i], function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    var file = ref.options.path + pathMod.basename(this.uri.href);
-                    var imageFile = fs.createWriteStream(pathMod.normalize(file));
-                    imageFile.on("error", function (e) {
-                        console.error(e);
-                    });
-                    imageFile.write(body, function () {
-                        localPromise.resolve();
+    scraperUtils.ensureDirectoryExists(this.options.path, function (err) {
+        if (!err) {
+            if (images !== undefined && Array.isArray(images)) {
+                var globalPromises = [];
+                
+                for(var i = 0; i < images.length; i++) {
+                    var localPromise = Q.defer();
+                    globalPromises.push(localPromise);
+                    request(images[i], function (error, response, body) {
+                        if (!error && response.statusCode == 200) {
+                            var file = ref.options.path + pathMod.basename(this.uri.href);
+                            var imageFile = fs.createWriteStream(pathMod.normalize(file));
+                            imageFile.on("error", function (e) {
+                                console.error(e);
+                            });
+                            imageFile.write(body, function () {
+                                localPromise.resolve();
+                            });
+                        }
                     });
                 }
-            });
-        }
-        
-        Q.all(globalPromises)
-        .then(function (results) {
-            result.status = "SUCCESS";
-            result.data = images;
+                
+                Q.all(globalPromises)
+                .then(function (results) {
+                    result.status = "SUCCESS";
+                    result.data = images;
+                    ref.emit("endsave", result);
+                });
+            } else {
+                result.error = "Images array missing";
+                ref.emit("endsave", result);
+            }
+        } else {
+            result.error = "Could not create directory";
+            result.err = err;
             ref.emit("endsave", result);
-        });
-    } else {
-        result.error = "Images array missing";
-        ref.emit("endsave", result);
-    }
+        }
+    });
 };
 
 module.exports = Scraper;
