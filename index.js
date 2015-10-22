@@ -43,8 +43,43 @@ Scraper.prototype.scrape = function () {
                 var images = [];
                 var filePathRegex = new RegExp("^(\\/[a-zA-Z0-9\\-_]+\\.(jpg|gif|png))+$/i");
                 
+                var urlParsed = urlMod.parse(response.request.uri.href);
+                var urlRoot = "";
+                if (urlParsed.protocol) {
+                    urlRoot += urlParsed.protocol;
+                } else {
+                    urlRoot += "http:";
+                }
+                urlRoot += "//";
+                if (urlParsed.auth) {
+                    urlRoot += urlParsed.auth + "@";
+                }
+                if (urlParsed.hostname) {
+                    urlRoot += urlParsed.hostname;
+                }
+                if (urlParsed.port) {
+                    urlRoot += ":" + urlParsed.port;
+                }
+                var urlRootWithPath = urlRoot + urlParsed.pathname.substring(0, urlParsed.pathname.lastIndexOf("/"));
+                
                 $("img").each(function () {
-                    images.push($(this).attr("src"));
+                    var src = $(this).attr("src");
+                    var srcParsed = urlMod.parse(src);
+                    if (!srcParsed.hostname) {
+                        if (src.substring(0, 2) == "//") {
+                            if (urlParsed.protocol) {
+                                src = urlParsed.protocol + src;
+                            } else {
+                                src = "http:" + src;
+                            }
+                        } else if (src.substring(0, 1) == "/") {
+                            src = urlRoot + src;
+                        } else {
+                            src = urlRootWithPath + "/" + src;
+                        }
+                    }
+                    
+                    images.push(src);
                 });
                 
                 $("a").has("img").each(function () {
